@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="hdfs_tools" basedir=".">
+	<taskdef resource="net/sf/antcontrib/antlib.xml" />
+
+	<property file="hdfs.properties" />
+	<property name="hdfs.bin" value="${hdfs.home}/bin/hdfs" />
+	<echo>Hadoop: ${hadoop.bin}</echo>
+
+	<macrodef name="run-hdfs">
+		<attribute name="cmd" />
+		<attribute name="arg1" />
+		<attribute name="arg2" default="" />
+		<attribute name="outputproperty" default="hadoop.run.output" />
+		<attribute name="resultproperty" default="hadoop.run.result" />
+		<attribute name="failonerror" default="true" />
+		<attribute name="debug" default="false" />
+		<sequential>
+			<echo>Run hadoop fs: @{cmd} @{arg1} @{arg2}</echo>
+			<var name="@{outputproperty}" unset="true" />
+			<var name="@{resultproperty}" unset="true" />
+			<if>
+				<equals arg1="@{debug}" arg2="false" />
+				<then>
+					<if>
+						<equals arg1="@{arg2}" arg2="" />
+						<then>
+							<exec executable="${hdfs.bin}" failonerror="false" resultproperty="@{resultproperty}" outputproperty="@{outputproperty}">
+								<arg value="@{cmd}" />
+								<arg value="@{arg1}" />
+							</exec>
+						</then>
+						<else>
+							<exec executable="${hdfs.bin}" failonerror="false" resultproperty="@{resultproperty}" outputproperty="@{outputproperty}">
+								<arg value="@{cmd}" />
+								<arg value="@{arg1}" />
+								<arg value="@{arg2}" />
+							</exec>
+						</else>
+					</if>
+				</then>
+				<else>
+					<echo message="Debug is true, just ignore it" />
+				</else>
+			</if>
+			<if>
+				<equals arg1="@{debug}" arg2="false" />
+				<then>
+					<!-- <echo>Result: ${@{resultproperty}}</echo> -->
+					<echo>${@{outputproperty}}</echo>
+				</then>
+			</if>
+			<if>
+				<and>
+					<equals arg1="@{debug}" arg2="false" />
+					<equals arg1="@{failonerror}" arg2="true" />
+					<not>
+						<equals arg1="${@{resultproperty}}" arg2="0" />
+					</not>
+				</and>
+				<then>
+					<fail message="run-hdfs failed with result code: ${@{resultproperty}}, error: ${@{outputproperty}}" />
+				</then>
+			</if>
+		</sequential>
+	</macrodef>
+
+<!--
+	<run-hadoop-fs cmd="-ls" arg1="/tmp" />
+	<echo>${hadoop.run.result}</echo>
+	<echo>${hadoop.run.output}</echo>
+	<run-hadoop-fs cmd="-get" arg1="/tmp/a" arg2="/tmp/a" failonerror="false" />
+	<echo>${hadoop.run.result}</echo>
+	<echo>${hadoop.run.output}</echo>
+-->
+</project>

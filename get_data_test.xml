@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="" basedir=".">
+	<script language="javascript">
+        var logger = project.getBuildListeners().firstElement();
+        logger.setMessageOutputLevel(0);
+    </script>
+    <taskdef resource="net/sf/antcontrib/antlib.xml" />
+
+    <property file="anchor_info.properties"/>
+
+	<script language="javascript">
+		<![CDATA[
+		importPackage(java.util,java.text);
+		var dateFormat=new SimpleDateFormat("yyyyMMdd");
+
+		var cal=Calendar.getInstance();
+		cal.add(Calendar.DAY_OF_YEAR,-1);
+		var dt=dateFormat.format(cal.getTime());
+		project.setProperty("dt",dt);
+		]]>
+	</script>
+
+	<import file="${anchor_info.run_shell_tools}.xml"/>
+
+	<target name="act_info_data">
+		<run-shell-script script="${anchor_info.act_info_script}" arg1="${dt}" failonerror="false" resultproperty="act_info.result" />
+	</target>
+
+	<target name="game_channel_data">
+		<run-shell-script script="${anchor_info.game_channel_script}" arg1="${dt}" failonerror="false" resultproperty="game_channel.result" />
+	</target>
+
+	<target name="edu_channel_date">
+		<run-shell-script script="${anchor_info.edu_channel_script}" arg1="${dt}" failonerror="false" resultproperty="edu_channel.result" />
+	</target>
+
+	<target name="yule_channel_data">
+		<run-shell-script script="${anchor_info.yule_channel_script}" arg1="${dt}" failonerror="false" resultproperty="yule_channel.result" />
+	</target>
+
+	<target name="get_anchor_info" depends="game_channel_data,edu_channel_date,yule_channel_data">
+		<echo>Data Finished</echo>	
+	</target>
+</project>

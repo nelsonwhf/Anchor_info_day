@@ -1,0 +1,233 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="anchor_info_data" basedir=".">
+	<script language="javascript">
+        var logger = project.getBuildListeners().firstElement();
+        logger.setMessageOutputLevel(0);
+    </script>
+    <taskdef resource="net/sf/antcontrib/antlib.xml" />
+
+    <property file="anchor_info.properties"/>
+
+	<script language="javascript">
+		<![CDATA[
+		importPackage(java.util,java.text);
+		var dateFormat=new SimpleDateFormat("yyyyMMdd");
+
+		var cal=Calendar.getInstance();
+		cal.add(Calendar.DAY_OF_YEAR,-1);
+		var dt=dateFormat.format(cal.getTime());
+		project.setProperty("dt",dt);
+		]]>
+	</script>
+
+	<import file="${anchor_info.run_shell_tools}.xml"/>
+	<import file="hdfs_tools.xml"/>
+	<import file="hive_tools.xml"/>
+	<import file="fail_handle.xml" />
+
+	<target name="check_act_info">
+		<hive-table-path database="${anchor_info.database}" table="${anchor_info.act_info_table}" partion1="dt=${dt}" pathproperty="act_info.path" />
+        <run-hdfs cmd="-stat" arg1="${act_info.path}" failonerror="false" resultproperty="act_info.stat" />
+	</target>
+
+	<target name="act_info_available">
+      <script language="javascript">
+         <![CDATA[
+           while (true) {
+           project.executeTarget("check_act_info");
+           var stat = project.getProperty("act_info.stat");
+           if (stat == '0') {
+             print("Found it");
+             break;
+           } else {
+           print("Not found it, sleep ...");
+           java.lang.Thread.sleep(30000);
+           }
+           }
+         ]]>
+       </script>
+    </target>
+
+	<target name="game_channel_data">
+		<!--<run-shell-script script="${anchor_info.game_channel_script}" arg1="${dt}" failonerror="false" resultproperty="game_channel.result" />-->
+        <run-hive-sql debug="${anchor_info.debug}">
+            use ${anchor_info.hiidodb};set mapred.job.queue.name=${anchor_info.queue};
+            create temporary function ToArray as 'com.duowan.yy.etl.hive.ToArray';
+            insert overwrite table ${anchor_info.database}.${anchor_info.channel_room_table} partition(type=${anchor_info.game_type},dt='${dt}') 
+            select d.uid,concat_ws(',',d.sid_array),concat_ws(',',d.sid_array),concat_ws(',',d.asid_array),
+            concat_ws(',',d.name_array),concat_ws(',',d.name_array),concat_ws(',',d.typestr_array),
+            concat_ws(',',d.typestr_array),concat_ws(',',d.type_array),concat_ws(',',d.type_array) from 
+            (select c.uid,ToArray(distinct c.sid) as sid_array,ToArray(distinct c.typestr) as typestr_array,
+            ToArray(distinct c.name) as name_array,ToArray(distinct c.type) as type_array,ToArray(distinct c.asid) as asid_array from 
+            	(select a.uid as uid,b.sid as sid,b.typestr as typestr,b.name as name,b.type as type,b.asid as asid from 
+            		(select cast(uid as string) as uid,cast(channel as string) as channel from base_game_channel_info_day where type=1 and dt='${dt}')a 
+            		join 
+            		(select cast(sid as string) as sid,typestr,name,cast(type as string) as type,cast(asid as string) as asid from warehouse.base_channel_info)b 
+            		on (a.channel=b.sid)
+            	)c group by c.uid
+            )d;
+        </run-hive-sql>
+	</target>
+
+	<target name="edu_channel_data">
+		<!--<run-shell-script script="${anchor_info.edu_channel_script}" arg1="${dt}" failonerror="false" resultproperty="edu_channel.result" />-->
+ 		<run-hive-sql debug="${anchor_info.debug}">
+			use ${anchor_info.hiidodb};set mapred.job.queue.name=${anchor_info.queue};
+			create temporary function ToArray as 'com.duowan.yy.etl.hive.ToArray';
+			insert overwrite table ${anchor_info.database}.${anchor_info.channel_room_table} partition(type=${anchor_info.edu_type},dt='${dt}') 
+			select e.uid,concat_ws(',',e.sid_array),concat_ws(',',e.sid_array),concat_ws(',',e.asid_array),
+			concat_ws(',',e.name_array),concat_ws(',',e.name_array),concat_ws(',',e.typestr_array),
+			concat_ws(',',e.typestr_array),concat_ws(',',e.type_array),concat_ws(',',e.type_array) from 
+			(select d.uid,ToArray(distinct d.sid) as sid_array,ToArray(distinct d.typestr) as typestr_array,
+			 ToArray(distinct d.name) as name_array,ToArray(distinct d.type) as type_array,ToArray(distinct d.asid) as asid_array from 
+				(select a.uid as uid,b.channellongid as sid,c.typestr as typestr,c.name as name,c.type as type,c.asid as asid from 
+					(select cast(uid as string) as uid,cast(agencyid as string) as agencyid from edu_teacher_day where dt='${dt}')a 
+					join 
+					(select cast(agencyid as string) agencyid,cast(channellongid as string) as channellongid from edu_agency_day where dt='${dt}')b 
+					on (a.agencyid=b.agencyid) 
+					join 
+					(select cast(sid as string) as sid,cast(typestr as string) as typestr,name,cast(type as string) as type,cast(asid as string) as asid from warehouse.base_channel_info)c 
+					on (b.channellongid=c.sid)
+				)d group by d.uid
+			)e;
+ 		</run-hive-sql>
+	</target>
+
+	<target name="yule_channel_data">
+		<!--<run-shell-script script="${anchor_info.yule_channel_script}" arg1="${dt}" failonerror="false" resultproperty="yule_channel.result" />-->
+		<run-hive-sql debug="${anchor_info.debug}">
+			use ${anchor_info.hiidodb};set mapred.job.queue.name=${anchor_info.queue};
+			create temporary function ToArray as 'com.duowan.yy.etl.hive.ToArray';
+			insert overwrite table ${anchor_info.database}.${anchor_info.channel_room_table} partition(type=${anchor_info.yule_type},dt='${dt}') 
+			select c.uid,c.roomcid,c.sid,c.asid,d.name,c.channel_name,d.typestr,c.channel_typestr,d.type,c.channel_type from 
+				(select a.uid as uid,a.roomcid as roomcid,a.contractcid as sid,b.asid as asid,b.name as channel_name,b.typestr as channel_typestr,b.type as channel_type from 
+					(select uid,roomcid,contractcid from original_yule_room_user_day where dt='${dt}' and status=4)a 
+					left outer join 
+					(select sid,typestr,name,type,asid from warehouse.base_channel_info)b 
+					on (a.contractcid=b.sid)
+				)c 
+				left outer join 
+				(select sid,typestr,name,type,asid from warehouse.base_channel_info)d 
+				on (c.roomcid=d.sid);
+		</run-hive-sql>
+	</target>
+
+	<target name="get_yule_info" depends="act_info_available">
+	    <!--<run-shell-script script="${anchor_info.yule_anchor_script}" arg1="${dt}" failonerror="false" resultproperty="yule_anchor.result" />-->
+		<run-hive-sql debug="${anchor_info.debug}">
+			use ${anchor_info.hiidodb};set mapred.job.queue.name=${anchor_info.queue};
+			insert overwrite table ${anchor_info.database}.${anchor_info.anchor_info_table} partition(anchor_type=${anchor_info.yule_type},dt='${dt}') 
+			select e.uid,e.yyid,e.nick,e.province,e.city,e.sign,e.intro,e.sex,e.sid,e.asid,
+			e.roomcid,e.channel_name,e.channel_typestr,e.channel_type,e.room_name,e.room_typestr,e.room_type,
+			f.aid,f.act_type,f.act_sub_type,f.act_name,null,null,null,null,null,null,null from 
+			(select a.uid as uid,b.yyid as yyid,b.nick as nick,b.province as province,b.city as city,
+			b.sign as sign,b.intro as intro,b.sex as sex,c.contractcid as sid,c.asid as asid,
+			c.roomcid as roomcid,c.channel_name as channel_name,c.channel_typestr as channel_typestr,c.channel_type as channel_type,
+			c.room_name as room_name,c.room_typestr as room_typestr,c.room_type as room_type from 
+				(select distinct uid from original_video_live_day where appid=15012 and dt &lt;= '${dt}')a 
+				left outer join 
+				(select distinct uid,yyid,nick,province,city,sign,intro,sex from warehouse.base_user_info)b 
+				on (a.uid=b.uid) 
+				left outer join 
+				(select uid,roomcid,contractcid,asid,room_name,channel_name,room_typestr,channel_typestr,
+				room_type,channel_type from ${anchor_info.database}.${anchor_info.channel_room_table} where type=${anchor_info.yule_type} and dt='${dt}')c 
+				on (b.uid=c.uid)
+			)e 
+			left outer join 
+			(select uid,aid,act_type,act_sub_type,act_name from ${anchor_info.database}.${anchor_info.act_info_table} where dt='${dt}')f 
+			on (e.uid=f.uid);
+		</run-hive-sql>
+	</target>
+
+	<target name="get_edu_info" depends="act_info_available">
+	   <!--<run-shell-script script="${anchor_info.edu_anchor_script}" arg1="${dt}" failonerror="false" resultproperty="edu_anchor.result" />-->
+		<run-hive-sql debug="${anchor_info.debug}">
+			use ${anchor_info.hiidodb};set mapred.job.queue.name=${anchor_info.queue};
+			insert overwrite table ${anchor_info.database}.${anchor_info.anchor_info_table} partition(anchor_type=${anchor_info.edu_type},dt='${dt}') 
+			select a.uid,c.yyid,c.nick,c.province,c.city,c.sign,c.intro,c.sex,d.contractcid,d.asid,
+			d.roomcid,d.channel_name,d.channel_typestr,d.channel_type,d.room_name,d.room_typestr,d.room_type,
+			e.aid,e.act_type,e.act_sub_type,e.act_name,b.name,b.profile,b.resume,b.agencyid,b.agencyname,b.teachertype,b.speciality from 
+			(select distinct uid from original_video_live_day where appid=10039 and dt &lt;= '${dt}')a 
+			join 
+			(select uid,name,profile,resume,agencyid,agencyname,(case teachertype when 0 then '普通讲师' 
+			when 1 then '名人讲师' else '认证讲师' end) as teachertype,speciality from edu_teacher_day where dt='${dt}')b 
+			on (a.uid=b.uid) 
+			join 
+			(select distinct uid,yyid,nick,province,city,sign,intro,sex from warehouse.base_user_info)c 
+			on (b.uid=c.uid) 
+			left outer join 
+			(select uid,roomcid,contractcid,asid,room_name,channel_name,room_typestr,channel_typestr,
+			room_type,channel_type from ${anchor_info.database}.${anchor_info.channel_room_table} where type=${anchor_info.edu_type} and dt='${dt}')d 
+			on (c.uid=d.uid) 
+			left outer join 
+			(select uid,aid,act_type,act_sub_type,act_name from ${anchor_info.database}.${anchor_info.act_info_table} where dt='${dt}')e 
+			on (d.uid=e.uid);
+		</run-hive-sql>
+	</target>
+
+	<target name="get_game_info" depends="act_info_available">
+		<!--<run-shell-script script="${anchor_info.game_anchor_script}" arg1="${dt}" failonerror="false" resultproperty="game_anchor.result" />-->
+		<run-hive-sql debug="${anchor_info.debug}">
+			use ${anchor_info.hiidodb};set mapred.job.queue.name=${anchor_info.queue};
+			insert overwrite table ${anchor_info.database}.${anchor_info.anchor_info_table} partition(anchor_type=${anchor_info.game_type},dt='${dt}') 
+			select a.uid,c.yyid,c.nick,c.province,c.city,c.sign,c.intro,c.sex,d.contractcid,d.asid,
+			d.roomcid,d.channel_name,d.channel_typestr,d.channel_type,d.room_name,d.room_typestr,d.room_type,
+			e.aid,e.act_type,e.act_sub_type,e.act_name,null,null,null,null,null,null,null from 
+			(select distinct uid from original_video_live_day where appid=10057 and dt &lt;= '${dt}')a 
+			join 
+			(select uid,channel from base_game_channel_info_day where dt='${dt}' and type=1)b 
+			on (a.uid=b.uid) 
+			join 
+			(select distinct uid,yyid,nick,province,city,sign,intro,sex from warehouse.base_user_info)c 
+			on (b.uid=c.uid) 
+			left outer join 
+			(select uid,roomcid,contractcid,asid,room_name,channel_name,room_typestr,channel_typestr,
+			room_type,channel_type from ${anchor_info.database}.${anchor_info.channel_room_table} where type=${anchor_info.game_type} and dt='${dt}')d 
+			on (c.uid=d.uid) 
+			left outer join 
+			(select uid,aid,act_type,act_sub_type,act_name from ${anchor_info.database}.${anchor_info.act_info_table} where dt='${dt}')e 
+			on (d.uid=e.uid);
+		</run-hive-sql>
+	</target>
+
+
+	<!--
+	<target name="get_anchor_info" depends="act_info_data,game_channel_data,edu_channel_date,yule_channel_data">
+		<if>
+			<equals arg1="${act_info.result}" arg2="0"/>
+			<then>
+				<if>
+					<equals arg1="${game_channel.result}" arg2="0"/>
+					<then>
+						<run-shell-script script="${anchor_info.game_anchor_script}" arg1="${dt}" failonerror="false" resultproperty="game_anchor.result" />
+					</then>
+					<else>
+						<fail message="${anchor_info.game_channel_script} fail"/>
+					</else>
+				</if>
+				<if>
+					<equals arg1="${edu_channel.result}" arg2="0"/>
+					<then>
+						<run-shell-script script="${anchor_info.edu_anchor_script}" arg1="${dt}" failonerror="false" resultproperty="edu_anchor.result" />
+					</then>
+					<else>
+						<fail message="${anchor_info.edu_channel_script} fail"/>
+					</else>
+				</if>
+				<if>
+					<equals arg1="${yule_channel.result}" arg2="0"/>
+					<then>
+						<run-shell-script script="${anchor_info.yule_anchor_script}" arg1="${dt}" failonerror="false" resultproperty="yule_anchor.result" />
+					</then>
+					<else>
+						<fail message="${anchor_info.yule_channel_script} fail"/>
+					</else>
+				</if>
+			</then>
+			<else>
+				<fail message="${anchor_info.act_info_script} fail"/>
+			</else>
+		</if>
+	</target>
+    -->
+</project>

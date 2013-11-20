@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="project_fail_handle" basedir=".">
+
+	<!-- should add "-listener com.duowan.yy.ant.ext.AntExceptionListener" to 
+		ant cmd line -->
+	<property name="ext.exception.exec.target" value="fail_handle" />
+
+	<taskdef resource="com/duowan/yy/sendalarm/ant/antlib.xml" />
+
+	<property file="fail_handle.properties" />
+
+	<target name="fail_handle">
+		<tstamp>
+			<format property="current.time" pattern="yyyy-MM-dd hh:mm" />
+		</tstamp>
+
+		<sendEmailAlarm url="${alarm.url}" user="${alarm.user}"
+			pwd="${alarm.pwd}" email="${alarm.email}"
+			title="${project.desc}: ${ant.project.name} failed at ${current.time}"
+			msg="${ext.exception.detail}" />
+		<sendSmsAlarm url="${alarm.url}" user="${alarm.user}"
+			pwd="${alarm.pwd}" phone="${alarm.phone}"
+			msg="${project.desc}: ${ant.project.name} failed at ${current.time}" />
+	</target>
+</project>

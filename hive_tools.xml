@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="hive_tools" basedir=".">
+	<taskdef resource="net/sf/antcontrib/antlib.xml" />
+
+	<property file="hive.properties" />
+	<property name="hive.bin" value="${hive.home}/bin/hive" />
+	<property name="hive.ext.jar" value="${hive.home}/yyext/YyHiveExtend.jar" />
+	<echo>Hive: ${hive.bin}</echo>
+	<echo>Hive ext: ${hive.ext.jar}</echo>
+	<echo>Hive DB home: ${hive.db.home}</echo>
+
+	<macrodef name="run-hive-sql">
+		<attribute name="outputproperty" default="hive.run.output" />
+		<attribute name="resultproperty" default="hive.run.result" />
+		<attribute name="failonerror" default="true" />
+		<attribute name="debug" default="false" />
+		<text name="sql" />
+		<sequential>
+			<echo>Run SQL by hive: @{sql}</echo>
+			<var name="@{outputproperty}" unset="true" />
+			<var name="@{resultproperty}" unset="true" />
+			<if>
+				<equals arg1="@{debug}" arg2="false" />
+				<then>
+					<exec executable="${hive.bin}" failonerror="false" resultproperty="@{resultproperty}" outputproperty="@{outputproperty}">
+						<arg value="-S" />
+						<arg value="-e" />
+						<arg value="@{sql}" />
+					</exec>
+				</then>
+				<else>
+					<echo message="Debug is true, just ignore it" />
+				</else>
+			</if>
+			<if>
+				<equals arg1="@{debug}" arg2="false" />
+				<then>
+					<!-- <echo>Result: ${@{resultproperty}}</echo> -->
+					<echo>${@{outputproperty}}</echo>
+				</then>
+			</if>
+			<if>
+				<and>
+					<equals arg1="@{debug}" arg2="false" />
+					<equals arg1="@{failonerror}" arg2="true" />
+					<not>
+						<equals arg1="${@{resultproperty}}" arg2="0" />
+					</not>
+				</and>
+				<then>
+					<fail message="run-hive-sql failed with result code: ${@{resultproperty}}, error: ${@{outputproperty}}" />
+				</then>
+			</if>
+
+		</sequential>
+	</macrodef>
+	
+    <macrodef name="hive-table-path">
+		<attribute name="dbhome" default="${hive.db.home}" />
+        <attribute name="database" default="default" />
+    	<attribute name="table" />
+    	<attribute name="partion1" default="" />
+    	<attribute name="partion2" default="" />
+    	<attribute name="pathproperty" />
+        <sequential>
+			<var name="@{pathproperty}" unset="true" />
+        	<var name="tmp.table.path" value="" />
+			<if>
+				<equals arg1="@{database}" arg2="default" />
+				<then>
+					<var name="tmp.table.path" value="@{dbhome}/@{table}" />
+				</then>
+				<else>
+					<var name="tmp.table.path" value="@{dbhome}/@{database}.db/@{table}" />
+				</else>
+			</if>
+			<if>
+				<equals arg1="@{partion1}" arg2="" />
+				<then>
+					<var name="@{pathproperty}" value="${tmp.table.path}" />
+				</then>
+				<elseif>
+				   <equals arg1="@{partion2}" arg2="" />
+				   <then>
+				     <var name="@{pathproperty}" value="${tmp.table.path}/@{partion1}"/>
+				   </then>
+				</elseif>
+				<else>
+					<var name="@{pathproperty}" value="${tmp.table.path}/@{partion1}/@{partion2}" />
+				</else>
+			</if>			
+        </sequential>
+    </macrodef>
+
+	<!--
+	<hive-table-path table="channel_role_tmp" pathproperty="channel_role_tmp.path" />
+	<echo>${channel_role_tmp.path}</echo>
+	<hive-table-path table="dolog_uid_day" partion="dt=2012-01-01" pathproperty="dolog_uid_day.path" />
+	<echo>${dolog_uid_day.path}</echo>
+	<hive-table-path database="ch_recomm" table="top_active_channels" partion="dt=2012-04-29" pathproperty="top_active_channels.path" />
+	<echo>${top_active_channels.path}</echo>
+
+	<property name="channel_recomm.database" value="ch_recomm" />
+	<run-hive-sql failonerror="false">
+		use ${channel_recomm.database};
+		select * from tbl;
+	</run-hive-sql>
+	<echo>${hive.run.result}</echo>
+-->
+</project>

@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="load_anchor_data" basedir=".">
+	<script language="javascript">
+        var logger = project.getBuildListeners().firstElement();
+        logger.setMessageOutputLevel(0);
+    </script>
+    <taskdef resource="net/sf/antcontrib/antlib.xml" />
+
+    <property file="load_data.properties"/>
+
+	<script language="javascript">
+		<![CDATA[
+		importPackage(java.util,java.text);
+		var dateFormat=new SimpleDateFormat("yyyyMMdd");
+
+		var cal=Calendar.getInstance();
+		cal.add(Calendar.DAY_OF_YEAR,-1);
+		var dt=dateFormat.format(cal.getTime());
+		project.setProperty("dt",dt);
+		]]>
+	</script>
+
+	<import file="hdfs_tools.xml"/>
+	<import file="hive_tools.xml"/>
+	<import file="fail_handle.xml" />
+    
+    <target name="check_yule_anchor_data">
+      <hive-table-path database="${load_data.database}" table="${load_data.anchor_info_table}" partion1="anchor_type=${load_data.yule_type}" partion2="dt=${dt}" pathproperty="yule_anchor.path" />
+      <run-hdfs cmd="-stat" arg1="${yule_anchor.path}" failonerror="false" resultproperty="yule_anchor.stat" />
+    </target>
+
+    <target name="yule_anchor_available">
+      <script language="javascript">
+         <![CDATA[
+           while (true) {
+           project.executeTarget("check_yule_anchor_data");
+           var stat = project.getProperty("yule_anchor.stat");
+           if (stat == '0') {
+             print("Found it");
+             break;
+           } else {
+           print("Not found it, sleep ...");
+           java.lang.Thread.sleep(30000);
+           }
+           }
+         ]]>
+       </script>
+    </target>
+
+    <target name="check_edu_anchor_data">
+      <hive-table-path database="${load_data.database}" table="${load_data.anchor_info_table}" partion1="anchor_type=${load_data.edu_type}" partion2="dt=${dt}" pathproperty="edu_anchor.path" />
+      <run-hdfs cmd="-stat" arg1="${edu_anchor.path}" failonerror="false" resultproperty="edu_anchor.stat" />
+    </target>
+
+    <target name="edu_anchor_available">
+      <script language="javascript">
+         <![CDATA[
+           while (true) {
+           project.executeTarget("check_edu_anchor_data");
+           var stat = project.getProperty("edu_anchor.stat");
+           if (stat == '0') {
+             print("Found it");
+             break;
+           } else {
+           print("Not found it, sleep ...");
+           java.lang.Thread.sleep(30000);
+           }
+           }
+         ]]>
+       </script>
+    </target>
+
+    <target name="check_game_anchor_data">
+      <hive-table-path database="${load_data.database}" table="${load_data.anchor_info_table}" partion1="anchor_type=${load_data.game_type}" partion2="dt=${dt}" pathproperty="game_anchor.path" />
+      <run-hdfs cmd="-stat" arg1="${game_anchor.path}" failonerror="false" resultproperty="game_anchor.stat" />
+    </target>
+
+    <target name="game_anchor_available">
+      <script language="javascript">
+         <![CDATA[
+           while (true) {
+           project.executeTarget("check_game_anchor_data");
+           var stat = project.getProperty("game_anchor.stat");
+           if (stat == '0') {
+             print("Found it");
+             break;
+           } else {
+           print("Not found it, sleep ...");
+           java.lang.Thread.sleep(30000);
+           }
+           }
+         ]]>
+       </script>
+    </target>
+
+    <target name="tolocal_yule_data" depends="yule_anchor_available">
+      <property name="yule_anchor.local.file" value="${load_data.yule_local_path}/anchor_type=${load_data.yule_type}/dt=${dt}/00000" />
+      <run-hdfs cmd="-getmerge" arg1="${yule_anchor.path}" arg2="${yule_anchor.local.file}" failonerror="false" resultproperty="yule_anchor.stat" />
+    </target>
+
+    <target name="tolocal_edu_data" depends="edu_anchor_available">
+      <property name="edu_anchor.local.file" value="${load_data.edu_local_path}/anchor_type=${load_data.edu_type}/dt=${dt}/00000" />
+      <run-hdfs cmd="-getmerge" arg1="${edu_anchor.path}" arg2="${edu_anchor.local.file}" failonerror="false" resultproperty="edu_anchor.stat" />
+    </target>
+
+    <target name="tolocal_game_data" depends="game_anchor_available">
+      <property name="game_anchor.local.file" value="${load_data.game_local_path}/anchor_type=${load_data.game_type}/dt=${dt}/00000" />
+      <run-hdfs cmd="-getmerge" arg1="${game_anchor.path}" arg2="${game_anchor.local.file}" failonerror="false" resultproperty="game_anchor.stat" />
+    </target>
+
+</project>

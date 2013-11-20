@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="shell_tools" basedir=".">
+	<taskdef resource="net/sf/antcontrib/antlib.xml"/>
+
+	<property name="sh.bin" value="/bin/sh"/>
+	<echo>Shell:${sh.bin}</echo>
+
+	<macrodef name="run-shell-script">
+		<attribute name="script"/>
+		<attribute name="arg1"/>
+		<attribute name="outputproperty" default="hadoop.run.output"/>
+		<attribute name="resultproperty" default="hadoop.run.result" />
+        <attribute name="failonerror" default="true" />
+        <attribute name="debug" default="false" />
+        <sequential>
+        	<echo>Run Shell Script:@{script} @{arg1}</echo>
+        	<var name="@{outputproperty}" unset="true" />
+            <var name="@{resultproperty}" unset="true" />
+            <if>
+            	<equals arg1="@{debug}" arg2="false" />
+            	<then>
+            		<exec executable="${sh.bin}" failonerror="false" resultproperty="@{resultproperty}" outputproperty="@{outputproperty}">
+            			<arg value="@{script}"/>
+	            		<arg value="@{arg1}"/>
+     	       		</exec>
+     	       	</then>
+            	<else>
+            		<echo message="Debug is true, just ignore it" />
+            	</else>
+            </if>
+            <if>
+                <equals arg1="@{debug}" arg2="false" />
+                <then>
+                    <echo>${@{outputproperty}}</echo>
+                </then>
+            </if>
+            <if>
+                <and>
+                    <equals arg1="@{debug}" arg2="false" />
+                    <equals arg1="@{failonerror}" arg2="true" />
+                    <not>
+                        <equals arg1="${@{resultproperty}}" arg2="0" />
+                    </not>
+                </and>
+                <then>
+                    <fail message="run-shell-script failed with result code: ${@{resultproperty}}, error: ${@{outputproperty}}" />
+                </then>
+            </if>
+        </sequential>
+	</macrodef>
+</project>
