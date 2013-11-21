@@ -113,102 +113,78 @@
 	</target>
 
 	<target name="get_yule_info" depends="yule_channel_data,act_info_available">
-		<if>
-			<equals arg1="${yule_channel.result}" arg2="0"/>
-			<then>
-				<run-hive-sql debug="${anchor_info.debug}">
-            		use ${anchor_info.hiidodb};set mapred.job.queue.name=${anchor_info.queue};
-            		insert overwrite table ${anchor_info.database}.${anchor_info.anchor_info_table} partition(anchor_type=${anchor_info.yule_type},dt='${dt}')
-            		select e.uid,e.yyid,e.nick,e.province,e.city,e.sign,e.intro,e.sex,e.sid,e.asid,
-            		e.roomcid,e.channel_name,e.channel_typestr,e.channel_type,e.room_name,e.room_typestr,e.room_type,
-            		f.aid,f.act_type,f.act_sub_type,f.act_name,null,null,null,null,null,null,null from
-            		(select a.uid as uid,b.yyid as yyid,b.nick as nick,b.province as province,b.city as city,
-            		b.sign as sign,b.intro as intro,b.sex as sex,c.contractcid as sid,c.asid as asid,
-            		c.roomcid as roomcid,c.channel_name as channel_name,c.channel_typestr as channel_typestr,c.channel_type as channel_type,
-            		c.room_name as room_name,c.room_typestr as room_typestr,c.room_type as room_type from
-                		(select distinct uid from original_video_live_day where appid=15012 and dt &lt;= '${dt}')a
-                		left outer join
-                		(select distinct uid,yyid,nick,province,city,sign,intro,sex from warehouse.base_user_info)b
-                		on (a.uid=b.uid)
-                		left outer join
-                		(select uid,roomcid,contractcid,asid,room_name,channel_name,room_typestr,channel_typestr,
-                		room_type,channel_type from ${anchor_info.database}.${anchor_info.channel_room_table} where type=${anchor_info.yule_type} and dt='${dt}')c
-                		on (b.uid=c.uid)
-            		)e
-            		left outer join
-            		(select uid,aid,act_type,act_sub_type,act_name from ${anchor_info.database}.${anchor_info.act_info_table} where dt='${dt}')f
-            		on (e.uid=f.uid);
-        		</run-hive-sql>
-			</then>
-			<else>
-				<fail message="${anchor_info.yule_channel_script} fail"/>
-			</else>
-		</if>
+		<run-hive-sql debug="${anchor_info.debug}">
+            use ${anchor_info.hiidodb};set mapred.job.queue.name=${anchor_info.queue};
+            insert overwrite table ${anchor_info.database}.${anchor_info.anchor_info_table} partition(anchor_type=${anchor_info.yule_type},dt='${dt}') 
+            select e.uid,e.yyid,e.nick,e.province,e.city,e.sign,e.intro,e.sex,e.sid,e.asid,
+            e.roomcid,e.channel_name,e.channel_typestr,e.channel_type,e.room_name,e.room_typestr,e.room_type,
+            f.aid,f.act_type,f.act_sub_type,f.act_name,null,null,null,null,null,null,null from 
+            (select a.uid as uid,b.yyid as yyid,b.nick as nick,b.province as province,b.city as city,
+            b.sign as sign,b.intro as intro,b.sex as sex,c.contractcid as sid,c.asid as asid,
+            c.roomcid as roomcid,c.channel_name as channel_name,c.channel_typestr as channel_typestr,c.channel_type as channel_type,
+            c.room_name as room_name,c.room_typestr as room_typestr,c.room_type as room_type from 
+                (select distinct uid from original_video_live_day where appid=15012 and dt &lt;= '${dt}')a 
+                left outer join 
+                (select distinct uid,yyid,nick,province,city,sign,intro,sex from warehouse.base_user_info)b 
+                on (a.uid=b.uid) 
+                left outer join 
+                (select uid,roomcid,contractcid,asid,room_name,channel_name,room_typestr,channel_typestr,
+                room_type,channel_type from ${anchor_info.database}.${anchor_info.channel_room_table} where type=${anchor_info.yule_type} and dt='${dt}')c 
+                on (b.uid=c.uid)
+            )e 
+            left outer join 
+            (select uid,aid,act_type,act_sub_type,act_name from ${anchor_info.database}.${anchor_info.act_info_table} where dt='${dt}')f 
+            on (e.uid=f.uid);
+        </run-hive-sql>
 	</target>
 
 	<target name="get_edu_info" depends="edu_channel_data,act_info_available">
-		<if>
-			<equals arg1="${edu_channel.result}" arg2="0"/>
-			<then>
-				<run-hive-sql debug="${anchor_info.debug}">
-            		use ${anchor_info.hiidodb};set mapred.job.queue.name=${anchor_info.queue};
-            		insert overwrite table ${anchor_info.database}.${anchor_info.anchor_info_table} partition(anchor_type=${anchor_info.edu_type},dt='${dt}')
-            		select a.uid,c.yyid,c.nick,c.province,c.city,c.sign,c.intro,c.sex,d.contractcid,d.asid,
-            		d.roomcid,d.channel_name,d.channel_typestr,d.channel_type,d.room_name,d.room_typestr,d.room_type,
-            		e.aid,e.act_type,e.act_sub_type,e.act_name,b.name,b.profile,b.resume,b.agencyid,b.agencyname,b.teachertype,b.speciality from
-            		(select distinct uid from original_video_live_day where appid=10039 and dt &lt;= '${dt}')a
-            		join
-            		(select uid,name,profile,resume,agencyid,agencyname,(case teachertype when 0 then '普通讲师'
-            		when 1 then '名人讲师' else '认证讲师' end) as teachertype,speciality from edu_teacher_day where dt='${dt}')b
-            		on (a.uid=b.uid)
-            		join
-            		(select distinct uid,yyid,nick,province,city,sign,intro,sex from warehouse.base_user_info)c
-            		on (b.uid=c.uid)
-            		left outer join
-            		(select uid,roomcid,contractcid,asid,room_name,channel_name,room_typestr,channel_typestr,
-            		room_type,channel_type from ${anchor_info.database}.${anchor_info.channel_room_table} where type=${anchor_info.edu_type} and dt='${dt}')d
-            		on (c.uid=d.uid)
-            		left outer join
-            		(select uid,aid,act_type,act_sub_type,act_name from ${anchor_info.database}.${anchor_info.act_info_table} where dt='${dt}')e
-            		on (d.uid=e.uid);
-        		</run-hive-sql>
-			</then>
-			<else>
-				<fail message="${anchor_info.edu_channel_script} fail"/>
-			</else>
-		</if>
+		<run-hive-sql debug="${anchor_info.debug}">
+            use ${anchor_info.hiidodb};set mapred.job.queue.name=${anchor_info.queue};
+            insert overwrite table ${anchor_info.database}.${anchor_info.anchor_info_table} partition(anchor_type=${anchor_info.edu_type},dt='${dt}') 
+            select a.uid,c.yyid,c.nick,c.province,c.city,c.sign,c.intro,c.sex,d.contractcid,d.asid,
+            d.roomcid,d.channel_name,d.channel_typestr,d.channel_type,d.room_name,d.room_typestr,d.room_type,
+            e.aid,e.act_type,e.act_sub_type,e.act_name,b.name,b.profile,b.resume,b.agencyid,b.agencyname,b.teachertype,b.speciality from 
+            (select distinct uid from original_video_live_day where appid=10039 and dt &lt;= '${dt}')a 
+            join 
+            (select uid,name,profile,resume,agencyid,agencyname,(case teachertype when 0 then '普通讲师' 
+            when 1 then '名人讲师' else '认证讲师' end) as teachertype,speciality from edu_teacher_day where dt='${dt}')b 
+            on (a.uid=b.uid) 
+            join 
+            (select distinct uid,yyid,nick,province,city,sign,intro,sex from warehouse.base_user_info)c 
+            on (b.uid=c.uid) 
+            left outer join 
+            (select uid,roomcid,contractcid,asid,room_name,channel_name,room_typestr,channel_typestr,
+            room_type,channel_type from ${anchor_info.database}.${anchor_info.channel_room_table} where type=${anchor_info.edu_type} and dt='${dt}')d 
+            on (c.uid=d.uid) 
+            left outer join 
+            (select uid,aid,act_type,act_sub_type,act_name from ${anchor_info.database}.${anchor_info.act_info_table} where dt='${dt}')e 
+            on (d.uid=e.uid);
+        </run-hive-sql>
 	</target>
 
 	<target name="get_game_info" depends="game_channel_data,act_info_available">
-		<if>
-			<equals arg1="${game_channel.result}" arg2="0"/>
-			<then>
-				<run-hive-sql debug="${anchor_info.debug}">
-            		use ${anchor_info.hiidodb};set mapred.job.queue.name=${anchor_info.queue};
-            		insert overwrite table ${anchor_info.database}.${anchor_info.anchor_info_table} partition(anchor_type=${anchor_info.game_type},dt='${dt}')
-            		select a.uid,c.yyid,c.nick,c.province,c.city,c.sign,c.intro,c.sex,d.contractcid,d.asid,
-            		d.roomcid,d.channel_name,d.channel_typestr,d.channel_type,d.room_name,d.room_typestr,d.room_type,
-            		e.aid,e.act_type,e.act_sub_type,e.act_name,null,null,null,null,null,null,null from
-            		(select distinct uid from original_video_live_day where appid=10057 and dt &lt;= '${dt}')a
-            		join
-            		(select uid,channel from base_game_channel_info_day where dt='${dt}' and type=1)b
-            		on (a.uid=b.uid)
-            		join
-            		(select distinct uid,yyid,nick,province,city,sign,intro,sex from warehouse.base_user_info)c
-            		on (b.uid=c.uid)
-            		left outer join
-            		(select uid,roomcid,contractcid,asid,room_name,channel_name,room_typestr,channel_typestr,
-           	 		room_type,channel_type from ${anchor_info.database}.${anchor_info.channel_room_table} where type=${anchor_info.game_type} and dt='${dt}')d
-            		on (c.uid=d.uid)
-            		left outer join
-            		(select uid,aid,act_type,act_sub_type,act_name from ${anchor_info.database}.${anchor_info.act_info_table} where dt='${dt}')e
-            		on (d.uid=e.uid);
-        		</run-hive-sql>
-			</then>
-			<else>
-				<fail message="${anchor_info.game_channel_script} fail"/>
-			</else>
-		</if>
+		<run-hive-sql debug="${anchor_info.debug}">
+            use ${anchor_info.hiidodb};set mapred.job.queue.name=${anchor_info.queue};
+            insert overwrite table ${anchor_info.database}.${anchor_info.anchor_info_table} partition(anchor_type=${anchor_info.game_type},dt='${dt}') 
+            select a.uid,c.yyid,c.nick,c.province,c.city,c.sign,c.intro,c.sex,d.contractcid,d.asid,
+            d.roomcid,d.channel_name,d.channel_typestr,d.channel_type,d.room_name,d.room_typestr,d.room_type,
+            e.aid,e.act_type,e.act_sub_type,e.act_name,null,null,null,null,null,null,null from 
+            (select distinct uid from original_video_live_day where appid=10057 and dt &lt;= '${dt}')a 
+            join 
+            (select uid,channel from base_game_channel_info_day where dt='${dt}' and type=1)b 
+            on (a.uid=b.uid) 
+            join 
+            (select distinct uid,yyid,nick,province,city,sign,intro,sex from warehouse.base_user_info)c 
+            on (b.uid=c.uid) 
+            left outer join 
+            (select uid,roomcid,contractcid,asid,room_name,channel_name,room_typestr,channel_typestr,
+            room_type,channel_type from ${anchor_info.database}.${anchor_info.channel_room_table} where type=${anchor_info.game_type} and dt='${dt}')d 
+            on (c.uid=d.uid) 
+            left outer join 
+            (select uid,aid,act_type,act_sub_type,act_name from ${anchor_info.database}.${anchor_info.act_info_table} where dt='${dt}')e 
+            on (d.uid=e.uid);
+        </run-hive-sql>
 	</target>
 
 
